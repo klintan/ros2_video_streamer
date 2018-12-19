@@ -13,27 +13,49 @@
 # limitations under the License.
 
 import rclpy
+import argparse
 from rclpy.node import Node
+from sensor_msgs.msg import CompressedImage
+from cv_bridge import CvBridge
+from datetime import datetime
+import cv2
 
-from std_msgs.msg import String
 
+class CameraSimulator(Node):
+    """
+    Main ROS Camera simulator Node function. Takes input from USB webcam and publishes a
+     ROS CompressedImage and Image message to topics /iris/image and
+     /iris/image
 
-class MinimalPublisher(Node):
+    """
 
-    def __init__(self):
+    def __init__(self, filepath):
         super().__init__('camera_simulator')
-        self.publisher_ = self.create_publisher(String, '/iris/image')
+        self.publisher_ = self.create_publisher(CompressedImage, '/iris/image')
+
+        self.br = CvBridge()
+
+        try:
+            self.vc = cv2.VideoCapture(filepath)
+        except:
+            print("End of file")
+
         timer_period = 0.05  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
 
     def timer_callback(self):
-        msg = String()
-        msg.data = 'Hello World: %d' % self.i
-        self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: "%s"' % msg.data)
-        self.i += 1
+        # msg = ComressedImage()
+        # msg.data = 'Hello World: %d' % self.i
+        # self.publisher_.publish(msg)
+        self.get_logger().info('Publishing image from simulator')
+        # self.i += 1
 
+        rval, frame = self.vc.read()
+
+        cmprsmsg = self.br.cv2_to_compressed_imgmsg(frame)  # Convert the image to a compress message
+
+        self.publisher_.publish(cmprsmsg)
 
     def get_image_msg(image):
         '''
@@ -44,7 +66,6 @@ class MinimalPublisher(Node):
         msg = CvBridge().cv2_to_imgmsg(image, encoding="bgr8")
         return msg
 
-
     def get_compressed_msg(image):
         '''
         Get compressed image, takes image as inputs and returns a CompressedImage message
@@ -52,46 +73,13 @@ class MinimalPublisher(Node):
         :return: sensor_msgs/CompressedImage
         '''
         msg = CompressedImage()
-        msg.header.stamp = rospy.Time.now()
+        msg.header.timestamp = str(datetime.now())
         msg.format = "jpeg"
-        msg.data = np.array(cv2.imencode('.jpg', image)[1]).tostring()
+        # msg.data = np.array(cv2.imencode('.jpg', image)[1]).tostring()
         return msg
-
-    def simulate_camera(path):
-        '''
-        Main ROS Camera simulator Node function. Takes input from USB webcam and publishes a ROS CompressedImage and Image message to
-        topics hermes/sensors/webcam_image and hermes/sensors/webcam_image/compressed
-        :return:
-        '''
-        VideoRaw = rospy.Publisher('hermes/sensors/webcam_image', Image, queue_size=1)
-
-        VideoCompressed = rospy.Publisher('hermes/sensors/webcam_image/compressed', CompressedImage, queue_size=10)
-
-        rospy.init_node('webcam', anonymous=True)
-        rate = rospy.Rate(10) # 10hz
-        try:
-            vc = cv2.VideoCapture(path)
-        except:
-            print("End of file")
-
-
-        while not rospy.is_shutdown():
-            rval, frame = vc.read()
-
-            msg_image = get_image_msg(frame)
-            msg_compressed_image = get_compressed_msg(frame)
-
-            log_str = "Publishing image %s" % rospy.get_time()
-            rospy.loginfo(log_str)
-            VideoRaw.publish(msg_image)
-            VideoCompressed.publish(msg_compressed_image)
-
-            rate.sleep()
-
 
 
 def main(args=None):
-
     parser = argparse.ArgumentParser(description='Video file or files to load')
     parser.add_argument('--path', type=str, default="",
                         help='path to video folder')
@@ -100,17 +88,16 @@ def main(args=None):
 
     args = parser.parse_args()
 
+    rclpy.init()
 
-    rclpy.init(args=args)
+    camera_simulator = CameraSimulator(filepath=args.file)
 
-    minimal_publisher = MinimalPublisher()
-
-    rclpy.spin(minimal_publisher)
+    rclpy.spin(camera_simulator)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    minimal_publisher.destroy_node()
+    camera_simulator.destroy_node()
     rclpy.shutdown()
 
 

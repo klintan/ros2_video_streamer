@@ -1,11 +1,15 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='camera_simulator',
     version='0.0.1',
-    packages=["src"],
+    packages=find_packages(),
     py_modules=[],
-    install_requires=['setuptools'],
+    zip_safe=True,
+    install_requires=[
+        'setuptools',
+        'opencv-python'
+    ],
     author='Andreas Klintberg',
     maintainer='Andreas Klintberg',
     keywords=['ROS2'],

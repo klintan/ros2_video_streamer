@@ -1,0 +1,11 @@
+.Python
+.idea/
+bin/
+build/
+camera_simulator.egg-info/
+dist/
+include/
+install/
+log/
+src/__pycache__/
+src/camera_simulator.egg-info/

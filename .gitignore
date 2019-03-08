@@ -9,3 +9,4 @@ install/
 log/
 src/__pycache__/
 src/camera_simulator.egg-info/
+lib/

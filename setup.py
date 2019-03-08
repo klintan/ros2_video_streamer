@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+package_name = 'camera_simulator'
+
 setup(
-    name='camera_simulator',
-    version='0.0.1',
+    name=package_name,
+    version='0.1.0',
     packages=find_packages(),
     py_modules=[],
     zip_safe=True,
@@ -18,7 +20,7 @@ setup(
     test_suite='test',
     entry_points={
         'console_scripts': [
-            'camera_simulator = src.camera_simulator:main',
+            'camera_simulator = camera_simulator.camera_simulator:main',
         ],
     },
 )

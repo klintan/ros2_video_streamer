@@ -15,11 +15,12 @@
 import rclpy
 import argparse
 from rclpy.node import Node
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge
 from datetime import datetime
 import cv2
-
+import os
+from natsort import natsorted, ns
 
 class CameraSimulator(Node):
     """
@@ -29,35 +30,49 @@ class CameraSimulator(Node):
 
     """
 
-    def __init__(self, filepath):
+    def __init__(self, **kwargs):
         super().__init__('camera_simulator')
-        self.publisher_ = self.create_publisher(CompressedImage, '/iris/image')
+
+        self.publisher_ = self.create_publisher(Image, '/iris/image', 5)
 
         self.br = CvBridge()
 
-        try:
-            self.vc = cv2.VideoCapture(filepath)
-        except:
-            print("End of file")
+        self.type = kwargs["type"]
 
-        timer_period = 0.05  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.i = 0
+        if self.type == "video":
+            try:
+                self.vc = cv2.VideoCapture(kwargs["path"])
+            except:
+                print("End of file")
 
-    def timer_callback(self):
-        # msg = ComressedImage()
-        # msg.data = 'Hello World: %d' % self.i
-        # self.publisher_.publish(msg)
+            timer_period = 0.05  # seconds
+            self.timer = self.create_timer(timer_period, self.image_callback)
+        else:
+            for image_path in natsorted(os.listdir(kwargs["path"]), key=lambda y: y.lower()):
+                if image_path.endswith(".jpg") or image_path.endswith(".jpeg") or image_path.endswith(".png"):
+                    self.image_callback(os.path.join(kwargs["path"], image_path))
+            rclpy.get_logger().info("All images have been published")
+
+
+    def image_callback(self, image_path=None):
         self.get_logger().info('Publishing image from simulator')
-        # self.i += 1
 
-        rval, frame = self.vc.read()
+        if self.type == "video":
+            rval, image = self.vc.read()
+        elif image_path:
+            image = cv2.imread(image_path)
+        else:
+            rclpy.get_logger().error("Image path is none.")
+            raise ValueError()
 
-        cmprsmsg = self.br.cv2_to_compressed_imgmsg(frame)  # Convert the image to a compress message
+        img_msg = self.br.cv2_to_imgmsg(image)  # Convert the image to a message
 
-        self.publisher_.publish(cmprsmsg)
+        #img_msg.header.stamp = self.get_clock().now()
+        img_msg.header.frame_id = "camera"
 
-    def get_image_msg(image):
+        self.publisher_.publish(img_msg)
+
+    def get_image_msg(self, image):
         '''
         Get image message, takes image as input and returns CvBridge image message
         :param image: cv2 image
@@ -66,7 +81,7 @@ class CameraSimulator(Node):
         msg = CvBridge().cv2_to_imgmsg(image, encoding="bgr8")
         return msg
 
-    def get_compressed_msg(image):
+    def get_compressed_msg(self, image):
         '''
         Get compressed image, takes image as inputs and returns a CompressedImage message
         :param image: cv2 image
@@ -75,22 +90,21 @@ class CameraSimulator(Node):
         msg = CompressedImage()
         msg.header.timestamp = str(datetime.now())
         msg.format = "jpeg"
-        # msg.data = np.array(cv2.imencode('.jpg', image)[1]).tostring()
         return msg
 
 
 def main(args=None):
     parser = argparse.ArgumentParser(description='Video file or files to load')
-    parser.add_argument('--path', type=str, default="",
+    parser.add_argument('--path', type=str, default="", required=True,
                         help='path to video folder')
-    parser.add_argument('--file', type=str, default="",
-                        help='path to single video file')
+    parser.add_argument('--type', type=str, default="video",
+                        help='type of "image" or "video')
 
-    args = parser.parse_args()
+    extra_args = parser.parse_args()
 
-    rclpy.init()
+    rclpy.init(args=args)
 
-    camera_simulator = CameraSimulator(filepath=args.file)
+    camera_simulator = CameraSimulator(path=extra_args.path, type=extra_args.path)
 
     rclpy.spin(camera_simulator)
 

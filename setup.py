@@ -10,7 +10,8 @@ setup(
     zip_safe=True,
     install_requires=[
         'setuptools',
-        'opencv-python'
+        'opencv-python',
+        'natsort'
     ],
     author='Andreas Klintberg',
     maintainer='Andreas Klintberg',

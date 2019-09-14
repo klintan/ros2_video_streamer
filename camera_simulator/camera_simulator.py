@@ -15,12 +15,14 @@
 import rclpy
 import argparse
 from rclpy.node import Node
-from sensor_msgs.msg import Image, CompressedImage
+from sensor_msgs.msg import Image, CompressedImage, CameraInfo
+from builtin_interfaces.msg import Time
 from cv_bridge import CvBridge
 from datetime import datetime
 import cv2
 import os
-from natsort import natsorted, ns
+import yaml
+from natsort import natsorted
 
 class CameraSimulator(Node):
     """
@@ -33,7 +35,16 @@ class CameraSimulator(Node):
     def __init__(self, **kwargs):
         super().__init__('camera_simulator')
 
-        self.publisher_ = self.create_publisher(Image, '/iris/image', 5)
+        image_topic_ = self.declare_parameter("image_topic", "/image/image_raw").value
+        camera_info_topic_ = self.declare_parameter("camera_info_topic", "/image/camera_info").value
+
+        self.frame_id_ = self.declare_parameter("frame_id", "camera").value
+        self.camera_name_ = self.declare_parameter("camera_name", "narrow_stereo").value
+
+        self.calibration_file = kwargs['calibration_file']
+
+        self.image_publisher_ = self.create_publisher(Image, image_topic_, 5)
+        self.camera_info_publisher_ = self.create_publisher(CameraInfo, camera_info_topic_, 5)
 
         self.br = CvBridge()
 
@@ -65,21 +76,67 @@ class CameraSimulator(Node):
             rclpy.get_logger().error("Image path is none.")
             raise ValueError()
 
-        img_msg = self.br.cv2_to_imgmsg(image)  # Convert the image to a message
+        time_msg = self.get_time_msg()
+        img_msg = self.get_image_msg(image, time_msg) # Convert the image to a message
 
-        #img_msg.header.stamp = self.get_clock().now()
-        img_msg.header.frame_id = "camera"
+        camera_info_msg = self.get_camera_info(time_msg)
 
-        self.publisher_.publish(img_msg)
+        self.image_publisher_.publish(img_msg)
+        self.camera_info_publisher_.publish(camera_info_msg)
 
-    def get_image_msg(self, image):
+    def get_camera_info(self, time):
+        """
+        From https://github.com/FurqanHabibi/cozmo_driver_ros2/blob/master/camera_info_manager.py
+        :param time:
+        :return:
+        """
+        ci = CameraInfo()
+        try:
+            f = open(self.calibration_file)
+            calib = yaml.load(f, Loader=yaml.FullLoader)
+            if calib is not None:
+                if calib['camera_name'] != self.camera_name_:
+                    self.get_logger().warning("[" + self.camera_name_ + "] does not match name " +
+                                                   calib['camera_name'] + " in file " + self.calibration_file)
+
+
+                # fill in CameraInfo fields
+                ci.width = calib['image_width']
+                ci.height = calib['image_height']
+                ci.distortion_model = calib['distortion_model']
+                # ci.D = calib['distortion_coefficients']['data']
+                ci.d = calib['distortion_coefficients']['data']
+                # ci.K = calib['camera_matrix']['data']
+                ci.k = calib['camera_matrix']['data']
+                # ci.R = calib['rectification_matrix']['data']
+                ci.r = calib['rectification_matrix']['data']
+                # ci.P = calib['projection_matrix']['data']
+                ci.p = calib['projection_matrix']['data']
+
+        except IOError:  # OK if file did not exist
+            self.get_logger().warning("Could not find calibration file " + self.calibration_file + ", will proceed without a calibration file")
+
+        ci.header.stamp = time
+        return ci
+
+    def get_time_msg(self):
+        time_msg = Time()
+        msg_time = self.get_clock().now().seconds_nanoseconds()
+
+        time_msg.sec = int(msg_time[0])
+        time_msg.nanosec = int(msg_time[1])
+        return time_msg
+
+    def get_image_msg(self, image, time):
         '''
         Get image message, takes image as input and returns CvBridge image message
         :param image: cv2 image
         :return: sensor_msgs/Imag
         '''
-        msg = CvBridge().cv2_to_imgmsg(image, encoding="bgr8")
-        return msg
+        img_msg = CvBridge().cv2_to_imgmsg(image, encoding="bgr8")
+        img_msg.header.stamp = time
+        img_msg.header.frame_id = self.frame_id_
+        return img_msg
 
     def get_compressed_msg(self, image):
         '''
@@ -97,6 +154,8 @@ def main(args=None):
     parser = argparse.ArgumentParser(description='Video file or files to load')
     parser.add_argument('--path', type=str, default="", required=True,
                         help='path to video folder')
+    parser.add_argument('--calibration_file', type=str, default="",
+                        help='path to video folder')
     parser.add_argument('--type', type=str, default="video",
                         help='type of "image" or "video')
 
@@ -104,7 +163,7 @@ def main(args=None):
 
     rclpy.init(args=args)
 
-    camera_simulator = CameraSimulator(path=extra_args.path, type=extra_args.path)
+    camera_simulator = CameraSimulator(path=extra_args.path, type=extra_args.path, calibration_file=extra_args.calibration_file)
 
     rclpy.spin(camera_simulator)
 

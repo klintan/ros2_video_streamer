@@ -7,25 +7,29 @@ Used as a camera simulator if you have pre-recorded video you want to stream, or
 #### Features:
 - Stream images from folder
 - Stream video from path
-
-#### Future features:
 - Supply camera calibration file for camera or images to publish camera_info.
-
-Could hopefully serve as a more advanced example of a ROS2 python package which has some ROS2 dependencies
-such as `cv_bridge` and also some public Python libraries such as `OpenCV`.
-
 
 This is a work in progress.
 
 ## Install
-Create a virtual environment
-
 `colcon build --symlink-install`
 
 `source ./install/setup.bash`
 
-Make sure to activate `vision_opencv` first.
+Make sure to activate the workspace where `vision_opencv` is first.
 
 ## Usage
-`ros2 run camera_simulator camera_simulator --type video --path <my-video-or-image-folder-path>`
 
+#### Run a video file
+
+`ros2 run camera_simulator camera_simulator --type video --path <my-video-path>`
+
+
+#### Run a KITTI dataset folder
+If for some reason you do not have a bag file of CameraInfo (camera calibration information) and
+images, what this app can do is simulate this
+
+`ros2 run camera_simulator camera_simulator --type image --path <image-folder-path> --calibration_file <calibration-path>`
+
+In the data folder you'll find some examples of this, calibration configuration sample file (converted to ROS2 calibration file from 2009_09_08_calib.txt for the left camera (camera 1)) and some images. Start up `image_proc` as you would to rectify
+your images and you should be good to go.

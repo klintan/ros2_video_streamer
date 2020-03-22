@@ -54,6 +54,7 @@ class CameraSimulator(Node):
         if self.type == "video":
             try:
                 self.vc = cv2.VideoCapture(kwargs["path"])
+                self.vc.set(cv2.CAP_PROP_POS_MSEC, kwargs["start"])
             except:
                 print("End of file")
 
@@ -68,8 +69,6 @@ class CameraSimulator(Node):
             self.get_logger().info("All images have been published")
 
     def image_callback(self, image_path=None):
-        self.get_logger().info("Publishing image from simulator")
-
         if self.type == "video":
             rval, image = self.vc.read()
         elif image_path:
@@ -164,13 +163,14 @@ def main(args=None):
     parser.add_argument("--path", type=str, default="", required=True, help="path to video folder")
     parser.add_argument("--calibration_file", type=str, default="", help="path to video folder")
     parser.add_argument("--type", type=str, default="video", help='type of "image" or "video')
+    parser.add_argument("--start", type=int, default=0, help="starting position")
 
     extra_args = parser.parse_args()
 
     rclpy.init(args=args)
 
     camera_simulator = CameraSimulator(
-        path=extra_args.path, type=extra_args.type, calibration_file=extra_args.calibration_file
+        path=extra_args.path, type=extra_args.type, calibration_file=extra_args.calibration_file, start=extra_args.start
     )
 
     rclpy.spin(camera_simulator)

@@ -51,6 +51,28 @@ class CameraSimulator(Node):
 
         self.type = kwargs["type"]
 
+        try:
+            f = open(self.calibration_file)
+            calib = yaml.load(f, Loader=yaml.FullLoader)
+        except IOError:
+            calib = None
+            self.get_logger().warning(
+                "Could not find calibration file " + self.calibration_file + ", will proceed without a calibration file"
+            )
+
+        if calib is not None:
+            if calib["camera_name"] != self.camera_name_:
+                self.get_logger().warning(
+                    "["
+                    + self.camera_name_
+                    + "] does not match name "
+                    + calib["camera_name"]
+                    + " in file "
+                    + self.calibration_file
+                )
+
+        self.calib = calib
+
         if self.type == "video":
             try:
                 self.vc = cv2.VideoCapture(kwargs["path"])
@@ -80,10 +102,11 @@ class CameraSimulator(Node):
         time_msg = self.get_time_msg()
         img_msg = self.get_image_msg(image, time_msg)  # Convert the image to a message
 
-        # camera_info_msg = self.get_camera_info(time_msg)
+        if self.calib:
+            camera_info_msg = self.get_camera_info(time_msg)
 
         self.image_publisher_.publish(img_msg)
-        # self.camera_info_publisher_.publish(camera_info_msg)
+        self.camera_info_publisher_.publish(camera_info_msg)
 
     def get_camera_info(self, time):
         """
@@ -92,39 +115,22 @@ class CameraSimulator(Node):
         :return:
         """
         ci = CameraInfo()
-        try:
-            f = open(self.calibration_file)
-            calib = yaml.load(f, Loader=yaml.FullLoader)
-            if calib is not None:
-                if calib["camera_name"] != self.camera_name_:
-                    self.get_logger().warning(
-                        "["
-                        + self.camera_name_
-                        + "] does not match name "
-                        + calib["camera_name"]
-                        + " in file "
-                        + self.calibration_file
-                    )
 
-                # fill in CameraInfo fields
-                ci.width = calib["image_width"]
-                ci.height = calib["image_height"]
-                ci.distortion_model = calib["distortion_model"]
-                # ci.D = calib['distortion_coefficients']['data']
-                ci.d = calib["distortion_coefficients"]["data"]
-                # ci.K = calib['camera_matrix']['data']
-                ci.k = calib["camera_matrix"]["data"]
-                # ci.R = calib['rectification_matrix']['data']
-                ci.r = calib["rectification_matrix"]["data"]
-                # ci.P = calib['projection_matrix']['data']
-                ci.p = calib["projection_matrix"]["data"]
-
-        except IOError:  # OK if file did not exist
-            self.get_logger().warning(
-                "Could not find calibration file " + self.calibration_file + ", will proceed without a calibration file"
-            )
+        # fill in CameraInfo fields
+        ci.width = calib["image_width"]
+        ci.height = calib["image_height"]
+        ci.distortion_model = calib["distortion_model"]
+        # ci.D = calib['distortion_coefficients']['data']
+        ci.d = calib["distortion_coefficients"]["data"]
+        # ci.K = calib['camera_matrix']['data']
+        ci.k = calib["camera_matrix"]["data"]
+        # ci.R = calib['rectification_matrix']['data']
+        ci.r = calib["rectification_matrix"]["data"]
+        # ci.P = calib['projection_matrix']['data']
+        ci.p = calib["projection_matrix"]["data"]
 
         ci.header.stamp = time
+        ci.header.frame_id = self.frame_id_
         return ci
 
     def get_time_msg(self):

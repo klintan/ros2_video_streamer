@@ -1,11 +1,20 @@
 from setuptools import setup, find_packages
+import os
+from glob import glob
 
-package_name = 'camera_simulator'
+PACKAGE_NAME = 'camera_simulator'
+SHARE_DIR = os.path.join("share", PACKAGE_NAME)
 
 setup(
-    name=package_name,
+    name=PACKAGE_NAME,
     version='0.1.0',
     packages=find_packages(),
+    data_files=[
+        ('share/ament_index/resource_index/packages', ['resource/' + PACKAGE_NAME]),
+        ('share/' + PACKAGE_NAME, ['package.xml']),
+        (os.path.join(SHARE_DIR, "launch"), glob(os.path.join("launch", "*.launch.py"))),
+        (os.path.join(SHARE_DIR, "config"), glob(os.path.join("config", "*.yaml"))),
+    ],
     py_modules=[],
     zip_safe=True,
     install_requires=[

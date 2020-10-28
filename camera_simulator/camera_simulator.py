@@ -73,7 +73,12 @@ class CameraSimulator(Node):
 
         self.calib = calib
 
+        path = kwargs['path']
+
         if self.type == "video":
+            if not os.path.isfile(path):
+                raise RuntimeError(f"Invalid video path: {path}")
+
             try:
                 self.vc = cv2.VideoCapture(kwargs["path"])
                 self.vc.set(cv2.CAP_PROP_POS_MSEC, kwargs["start"])
@@ -85,7 +90,7 @@ class CameraSimulator(Node):
 
             self.timer = self.create_timer(1.0 / video_fps, self.image_callback)
         else:
-            for image_path in natsorted(os.listdir(kwargs["path"]), key=lambda y: y.lower()):
+            for image_path in natsorted(os.listdir(path), key=lambda y: y.lower()):
                 if image_path.endswith(".jpg") or image_path.endswith(".jpeg") or image_path.endswith(".png"):
                     self.image_callback(os.path.join(kwargs["path"], image_path))
             self.get_logger().info("All images have been published")

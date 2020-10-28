@@ -104,9 +104,9 @@ class CameraSimulator(Node):
 
         if self.calib:
             camera_info_msg = self.get_camera_info(time_msg)
+            self.camera_info_publisher_.publish(camera_info_msg)
 
         self.image_publisher_.publish(img_msg)
-        self.camera_info_publisher_.publish(camera_info_msg)
 
     def get_camera_info(self, time):
         """

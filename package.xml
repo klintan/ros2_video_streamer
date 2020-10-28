@@ -5,14 +5,14 @@
   <version>0.1.0</version>
   <description>Camera simulator - run a recorded video file streamed on a ros topic as if a live webcamera.</description>
 
-  <maintainer>Andreas Klintberg</maintainer>
+  <maintainer email="ankl@kth.se">Andreas Klintberg</maintainer>
   <license>Apache License 2.0</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>cv_bridge</depend>
-  <depend>OpenCV</depend>
+  <depend>vision_opencv</depend>
+  <depend>python3-opencv</depend>
 
 
   <!-- These test dependencies are optional

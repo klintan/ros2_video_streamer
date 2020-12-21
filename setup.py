@@ -19,7 +19,6 @@ setup(
     zip_safe=True,
     install_requires=[
         'setuptools',
-        'opencv-python',
         'natsort'
     ],
     author='Andreas Klintberg',

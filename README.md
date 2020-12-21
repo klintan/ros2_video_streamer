@@ -12,13 +12,28 @@ Used as a camera simulator if you have pre-recorded video you want to stream, or
 This is a work in progress.
 
 ## Install
-`colcon build --symlink-install`
 
-`source ./install/setup.bash`
+### Install extra dependencies
 
-Make sure to activate the workspace where `vision_opencv` is first.
+#### Ubuntu/Debian
+
+``` bash
+apt update -y
+apt install -y python3-natsort  # Installing natsort (is not in rosdep)
+```
+
+### Install other dependencies and build
+
+``` bash
+rosdep install -i --from-path . -y
+colcon build --symlink-install
+
+source ./install/setup.bash
+```
 
 ## Usage
+
+Make sure to activate the workspace where `vision_opencv` is first.
 
 #### Run a video file
 

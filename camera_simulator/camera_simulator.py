@@ -17,9 +17,9 @@ import argparse
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CompressedImage, CameraInfo
 from builtin_interfaces.msg import Time
+import cv2
 from cv_bridge import CvBridge
 from datetime import datetime
-import cv2
 import os
 import yaml
 from natsort import natsorted

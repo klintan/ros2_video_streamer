@@ -51,6 +51,8 @@ class CameraSimulator(Node):
 
         self.type = kwargs["type"]
 
+        self.loop = kwargs["loop"]
+
         try:
             f = open(self.calibration_file)
             calib = yaml.load(f, Loader=yaml.FullLoader)
@@ -98,6 +100,14 @@ class CameraSimulator(Node):
     def image_callback(self, image_path=None):
         if self.type == "video":
             rval, image = self.vc.read()
+            if not rval and not self.loop:
+                self.get_logger().info("End of video, closing node...")
+                self.timer.cancel()
+                self.destroy_node()
+                exit()
+            elif not rval and self.loop:
+                self.vc.set(cv2.CAP_PROP_POS_MSEC, 0)
+                rval, image = self.vc.read()            
         elif image_path:
             image = cv2.imread(image_path)
         else:
@@ -171,13 +181,16 @@ def main(args=None):
     parser.add_argument("--calibration_file", type=str, default="", help="path to video folder")
     parser.add_argument("--type", type=str, default="video", help='type of "image" or "video')
     parser.add_argument("--start", type=int, default=0, help="starting position")
+    parser.add_argument('--loop', action='store_true', help='loop video after end')
+    parser.set_defaults(loop=False)
 
     extra_args = parser.parse_args()
 
     rclpy.init(args=args)
 
     camera_simulator = CameraSimulator(
-        path=extra_args.path, type=extra_args.type, calibration_file=extra_args.calibration_file, start=extra_args.start
+        path=extra_args.path, type=extra_args.type, calibration_file=extra_args.calibration_file, start=extra_args.start,
+        loop=extra_args.loop
     )
 
     rclpy.spin(camera_simulator)

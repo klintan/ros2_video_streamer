@@ -37,7 +37,7 @@ Make sure to activate the workspace where `vision_opencv` is first.
 
 #### Run a video file
 
-`ros2 run camera_simulator camera_simulator --type video --path <my-video-path>` --loop
+`ros2 run camera_simulator camera_simulator --type video --path <my-video-path> --loop`
 
 
 #### Run a KITTI dataset folder

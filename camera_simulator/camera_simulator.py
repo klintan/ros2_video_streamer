@@ -22,6 +22,7 @@ from cv_bridge import CvBridge
 from datetime import datetime
 import os
 import yaml
+import pysky360 as sky360
 from natsort import natsorted
 
 
@@ -77,7 +78,13 @@ class CameraSimulator(Node):
 
         path = kwargs['path']
 
-        if self.type == "video":
+        if self.type == "qhy":
+            self.autoExposureControl = sky360.AutoExposureControl()
+            self.capture = sky360.QHYCamera()
+            self.capture.open('')
+            self.capture.setControl(sky360.ControlParam.Exposure, 40000, False)
+            self.timer = self.create_timer(1.0 / 20.0, self.image_callback)
+        elif self.type == "video":
             if not os.path.isfile(path):
                 raise RuntimeError(f"Invalid video path: {path}")
 
@@ -98,7 +105,14 @@ class CameraSimulator(Node):
             self.get_logger().info("All images have been published")
 
     def image_callback(self, image_path=None):
-        if self.type == "video":
+        if self.type == "qhy":
+            image = self.capture.getFrame(True)
+            exposure = self.capture.getCameraParams().exposure
+            gain = self.capture.getCameraParams().gain
+            exposure_gain = self.autoExposureControl.calculate_exposure_gain(image, exposure, gain)
+            self.capture.setControl(sky360.ControlParam.Exposure, exposure_gain.exposure, False)
+            self.capture.setControl(sky360.ControlParam.Gain, exposure_gain.gain, False)
+        elif self.type == "video":
             rval, image = self.vc.read()
             if not rval and not self.loop:
                 self.get_logger().info("End of video, closing node...")
@@ -184,7 +198,7 @@ def main(args=None):
     parser.add_argument('--loop', action='store_true', help='loop video after end')
     parser.set_defaults(loop=False)
 
-    extra_args = parser.parse_args()
+    extra_args, unknown = parser.parse_known_args()
 
     rclpy.init(args=args)
 

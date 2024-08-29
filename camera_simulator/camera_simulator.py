@@ -184,7 +184,7 @@ def main(args=None):
     parser.add_argument('--loop', action='store_true', help='loop video after end')
     parser.set_defaults(loop=False)
 
-    extra_args = parser.parse_args()
+    extra_args, unknown = parser.parse_known_args()
 
     rclpy.init(args=args)
 
